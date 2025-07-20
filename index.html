@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suncorp Balance Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .bank-logo {
+            width: 60px;
+            height: 60px;
+            background: #FF6B35;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-weight: bold;
+            color: white;
+            font-size: 24px;
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        /* EMBEDDABLE WIDGET STARTS HERE */
+        .balance-widget {
+            background: #f7fafc;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            border: 1px solid #e2e8f0;
+        }
+
+        .balance-display {
+            font-size: 48px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .currency {
+            font-size: 24px;
+            color: #4a5568;
+            font-weight: 400;
+        }
+
+        .last-updated {
+            color: #718096;
+            font-size: 14px;
+            margin-top: 15px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-success {
+            background-color: #48bb78;
+        }
+
+        .status-error {
+            background-color: #f56565;
+        }
+
+        .loading {
+            color: #4299e1;
+            font-style: italic;
+        }
+
+        .error-message {
+            color: #e53e3e;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        /* EMBEDDABLE WIDGET ENDS HERE */
+
+        .actions {
+            margin-top: 30px;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(66, 153, 225, 0.4);
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .footer-note {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            color: #a0aec0;
+            font-size: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .dashboard-container {
+                padding: 30px 20px;
+            }
+            
+            .balance-display {
+                font-size: 36px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="bank-logo">S</div>
+        <h1>Suncorp Balance</h1>
+        <p class="subtitle">Real-time account balance display</p>
+        
+        <!-- EMBEDDABLE WIDGET CODE STARTS HERE -->
+        <div class="balance-widget" id="balanceWidget">
+            <div class="balance-display" id="balanceAmount">
+                <span class="loading">Loading...</span>
+            </div>
+            <div class="last-updated" id="lastUpdated">
+                <span class="status-indicator" id="statusIndicator"></span>
+                <span id="updateTime">Fetching balance...</span>
+            </div>
+            <div class="error-message" id="errorMessage" style="display: none;"></div>
+        </div>
+        <!-- EMBEDDABLE WIDGET CODE ENDS HERE -->
+        
+        <div class="actions">
+            <button class="refresh-btn" id="refreshBtn" onclick="refreshBalance()">
+                Refresh Balance
+            </button>
+        </div>
+        
+        <div class="footer-note">
+            This dashboard displays read-only balance data<br>
+            No sensitive account information is shown
+        </div>
+    </div>
+
+    <script>
+        // EMBEDDABLE WIDGET JAVASCRIPT STARTS HERE
+        class BalanceWidget {
+            constructor(apiBaseUrl = '') {
+                this.apiBaseUrl = apiBaseUrl;
+                this.balanceElement = document.getElementById('balanceAmount');
+                this.lastUpdatedElement = document.getElementById('lastUpdated');
+                this.updateTimeElement = document.getElementById('updateTime');
+                this.statusIndicatorElement = document.getElementById('statusIndicator');
+                this.errorMessageElement = document.getElementById('errorMessage');
+                this.refreshBtn = document.getElementById('refreshBtn');
+            }
+
+            async fetchBalance() {
+                try {
+                    const response = await fetch(`${this.apiBaseUrl}/get-balance`);
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        this.displayBalance(data);
+                        this.showStatus('success', this.formatLastUpdated(data.last_updated));
+                        this.hideError();
+                    } else {
+                        this.showError(data.error || 'Unable to fetch balance');
+                        this.showStatus('error', 'Failed to update');
+                    }
+                } catch (error) {
+                    console.error('Error fetching balance:', error);
+                    this.showError('Connection error');
+                    this.showStatus('error', 'Connection failed');
+                }
+            }
+
+            async refreshBalance() {
+                if (this.refreshBtn) {
+                    this.refreshBtn.disabled = true;
+                    this.refreshBtn.textContent = 'Refreshing...';
+                }
+
+                try {
+                    const response = await fetch(`${this.apiBaseUrl}/refresh-balance`);
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        this.displayBalance(data);
+                        this.showStatus('success', this.formatLastUpdated(data.last_updated));
+                        this.hideError();
+                    } else {
+                        this.showError(data.error || 'Unable to refresh balance');
+                        this.showStatus('error', 'Failed to refresh');
+                    }
+                } catch (error) {
+                    console.error('Error refreshing balance:', error);
+                    this.showError('Connection error');
+                    this.showStatus('error', 'Connection failed');
+                } finally {
+                    if (this.refreshBtn) {
+                        this.refreshBtn.disabled = false;
+                        this.refreshBtn.textContent = 'Refresh Balance';
+                    }
+                }
+            }
+
+            displayBalance(data) {
+                const balance = parseFloat(data.balance);
+                const formattedBalance = new Intl.NumberFormat('en-AU', {
+                    style: 'currency',
+                    currency: data.currency || 'AUD',
+                    minimumFractionDigits: 2
+                }).format(balance);
+
+                this.balanceElement.innerHTML = formattedBalance;
+            }
+
+            showStatus(status, message) {
+                this.statusIndicatorElement.className = `status-indicator status-${status}`;
+                this.updateTimeElement.textContent = message;
+            }
+
+            showError(message) {
+                this.errorMessageElement.textContent = message;
+                this.errorMessageElement.style.display = 'block';
+            }
+
+            hideError() {
+                this.errorMessageElement.style.display = 'none';
+            }
+
+            formatLastUpdated(isoString) {
+                if (!isoString) return 'Unknown';
+                
+                const date = new Date(isoString);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMins / 60);
+                
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins} minutes ago`;
+                if (diffHours < 24) return `${diffHours} hours ago`;
+                
+                return date.toLocaleDateString('en-AU', {
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
+            init() {
+                this.fetchBalance();
+            }
+        }
+
+        // Initialize widget
+        const balanceWidget = new BalanceWidget();
+        balanceWidget.init();
+
+        // Global function for button onclick
+        function refreshBalance() {
+            balanceWidget.refreshBalance();
+        }
+        // EMBEDDABLE WIDGET JAVASCRIPT ENDS HERE
+
+        // Auto-refresh every 30 minutes
+        setInterval(() => {
+            balanceWidget.fetchBalance();
+        }, 30 * 60 * 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embeddable Balance Widget Example</title>
+</head>
+<body>
+    <h1>Example: Embedded Balance Widget</h1>
+    <p>This demonstrates how to embed the balance widget into any website:</p>
+    
+    <!-- EMBEDDABLE WIDGET STARTS HERE -->
+    <!-- Copy everything between these comments to embed in your website -->
+    
+    <style>
+        .balance-widget {
+            background: #f7fafc;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            border: 1px solid #e2e8f0;
+            max-width: 400px;
+            text-align: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .balance-display {
+            font-size: 48px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .last-updated {
+            color: #718096;
+            font-size: 14px;
+            margin-top: 15px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-success {
+            background-color: #48bb78;
+        }
+
+        .status-error {
+            background-color: #f56565;
+        }
+
+        .loading {
+            color: #4299e1;
+            font-style: italic;
+        }
+
+        .error-message {
+            color: #e53e3e;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+
+    <div class="balance-widget" id="balanceWidget">
+        <div class="balance-display" id="balanceAmount">
+            <span class="loading">Loading...</span>
+        </div>
+        <div class="last-updated" id="lastUpdated">
+            <span class="status-indicator" id="statusIndicator"></span>
+            <span id="updateTime">Fetching balance...</span>
+        </div>
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <script>
+        class BalanceWidget {
+            constructor(apiBaseUrl = 'http://localhost:5000') {
+                this.apiBaseUrl = apiBaseUrl;
+                this.balanceElement = document.getElementById('balanceAmount');
+                this.updateTimeElement = document.getElementById('updateTime');
+                this.statusIndicatorElement = document.getElementById('statusIndicator');
+                this.errorMessageElement = document.getElementById('errorMessage');
+            }
+
+            async fetchBalance() {
+                try {
+                    const response = await fetch(`${this.apiBaseUrl}/get-balance`);
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        this.displayBalance(data);
+                        this.showStatus('success', this.formatLastUpdated(data.last_updated));
+                        this.hideError();
+                    } else {
+                        this.showError(data.error || 'Unable to fetch balance');
+                        this.showStatus('error', 'Failed to update');
+                    }
+                } catch (error) {
+                    this.showError('Connection error');
+                    this.showStatus('error', 'Connection failed');
+                }
+            }
+
+            displayBalance(data) {
+                const balance = parseFloat(data.balance);
+                const formattedBalance = new Intl.NumberFormat('en-AU', {
+                    style: 'currency',
+                    currency: data.currency || 'AUD',
+                    minimumFractionDigits: 2
+                }).format(balance);
+
+                this.balanceElement.innerHTML = formattedBalance;
+            }
+
+            showStatus(status, message) {
+                this.statusIndicatorElement.className = `status-indicator status-${status}`;
+                this.updateTimeElement.textContent = message;
+            }
+
+            showError(message) {
+                this.errorMessageElement.textContent = message;
+                this.errorMessageElement.style.display = 'block';
+            }
+
+            hideError() {
+                this.errorMessageElement.style.display = 'none';
+            }
+
+            formatLastUpdated(isoString) {
+                if (!isoString) return 'Unknown';
+                
+                const date = new Date(isoString);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMins / 60);
+                
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins} minutes ago`;
+                if (diffHours < 24) return `${diffHours} hours ago`;
+                
+                return date.toLocaleDateString('en-AU', {
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+        }
+
+        // Initialize and start the widget
+        // Change the API URL to your production server when deploying
+        const widget = new BalanceWidget('http://localhost:5000');
+        widget.fetchBalance();
+
+        // Auto-refresh every 30 minutes
+        setInterval(() => widget.fetchBalance(), 30 * 60 * 1000);
+    </script>
+    
+    <!-- EMBEDDABLE WIDGET ENDS HERE -->
+    
+    <h2>Integration Instructions</h2>
+    <p>To embed this widget in your website:</p>
+    <ol>
+        <li>Copy the CSS and HTML between the "EMBEDDABLE WIDGET" comments</li>
+        <li>Update the API URL in the JavaScript to point to your production server</li>
+        <li>Paste the code into your website where you want the balance to appear</li>
+    </ol>
+    
+    <h3>Customization</h3>
+    <p>You can easily customize the widget by:</p>
+    <ul>
+        <li>Modifying the CSS styles to match your website's design</li>
+        <li>Changing colors, fonts, and layout in the .balance-widget class</li>
+        <li>Adjusting the auto-refresh interval (currently 30 minutes)</li>
+    </ul>
+</body>
+</html>
