@@ -25,6 +25,9 @@ Build a secure, automated system that periodically fetches my **Suncorp Bank acc
 * 📥 **Daily balance fetch** via cron job OR manual fetch on button click.
 * 🌐 **Safe public display** of read-only balance.
 * 🛡️ **No frontend exposure of credentials** — all API interactions are backend-only.
+* 🔒 **Minimal API permissions** — only balance-read access (no transactions/metadata).
+* 📦 **Docker containerization** for consistent deployment.
+* 🔧 **Embeddable widget** for easy website integration.
 
 ---
 
@@ -47,14 +50,41 @@ Build a secure, automated system that periodically fetches my **Suncorp Bank acc
 
 ---
 
-## ✅ To-Do (for Claude/AI agent)
+## 🔐 Basiq API Security Requirements
 
-1. Scaffold Flask backend with `/get-balance` route
-2. Add Basiq auth/token refresh logic
-3. Connect to `/users/{userId}/accounts` and fetch balance
-4. Add cron job or JavaScript button for balance update
-5. Format and display balance safely on a public HTML page
-6. Ensure no sensitive info (account number, IDs, secrets) is exposed
+### Required Minimal Permissions (Balance-Only Access)
+
+**✅ Accounts Endpoints:**
+- `GET /users/{userId}/accounts`
+- `GET /users/{userId}/accounts/{accountId}`
+
+**✅ Actions Endpoints (for data sync):**
+- `POST /users/{userId}/actions`
+- `GET /users/{userId}/actions`
+- `GET /users/{userId}/actions/{actionId}`
+- `GET /actions/{actionId}/results`
+- `GET /actions/{actionId}/results/{resultId}`
+
+**❌ Disable All Other Permissions** for minimal attack surface.
+
+### API Key Setup Process
+1. Create application named `BalanceViewerReadOnly`
+2. Generate API key with minimal permissions above
+3. Store securely in environment variables (never commit to Git)
+4. Use secrets manager in production (AWS Secrets Manager, etc.)
+
+---
+
+## ✅ Implementation Checklist ✅
+
+1. ✅ Scaffold Flask backend with `/get-balance` route
+2. ✅ Add Basiq auth/token refresh logic
+3. ✅ Connect to `/users/{userId}/accounts` and fetch balance
+4. ✅ Add cron job or JavaScript button for balance update
+5. ✅ Format and display balance safely on a public HTML page
+6. ✅ Ensure no sensitive info (account number, IDs, secrets) is exposed
+7. ✅ Docker containerization for deployment
+8. ✅ Embeddable widget for website integration
 
 ---
 

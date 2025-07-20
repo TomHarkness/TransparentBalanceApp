@@ -9,11 +9,20 @@ You are assisting in building a **public-facing tool** that securely fetches and
 1. **NEVER suggest including credentials or tokens in frontend code.**
 2. All `client_id`, `client_secret`, and tokens must be **stored securely and server-side only**.
 3. Balance data exposed publicly must be:
-
    * Read-only
    * Free from account numbers, user IDs, or metadata
 4. Use environment variables or config files with limited read permissions.
 5. Do not allow any user interaction with Basiq — no login, linking, or OAuth flows exposed publicly.
+6. **Minimal API permissions only** — enable only these 7 Basiq endpoints:
+   * `GET /users/{userId}/accounts`
+   * `GET /users/{userId}/accounts/{accountId}`
+   * `POST /users/{userId}/actions`
+   * `GET /users/{userId}/actions`
+   * `GET /users/{userId}/actions/{actionId}`
+   * `GET /actions/{actionId}/results`
+   * `GET /actions/{actionId}/results/{resultId}`
+7. **Disable all other Basiq permissions** for minimal attack surface.
+8. Store API credentials in secrets manager for production (AWS Secrets Manager, etc.).
 
 ---
 
@@ -58,6 +67,9 @@ You are assisting in building a **public-facing tool** that securely fetches and
 * "Use a Flask route like `/get-balance` that returns only `{ balance: 1542.55 }` as JSON."
 * "Write the balance to a cached file every 24 hours using a cron job."
 * "Protect all API credentials with environment variables."
+* "Create Basiq API key with minimal permissions (only 7 required endpoints)."
+* "Use Docker for consistent deployment with security best practices."
+* "Store credentials in AWS Secrets Manager for production."
 
 ---
 
