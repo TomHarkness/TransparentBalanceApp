@@ -164,12 +164,62 @@ Under **Actions** (required for data sync):
 - Set strict read-only file permissions on config files
 - Regularly rotate API credentials
 
-### Getting Started with Basiq
+### 🏦 Connecting Your Suncorp Account
 
-1. Complete the API setup above
-2. Connect your Suncorp account to get a User ID
-3. Use sandbox for testing (free) or production (AUD $0.39/month/user)
-4. Refer to [Basiq Documentation](https://api.basiq.io/docs/) for latest requirements
+#### Step 1: Complete API Setup
+Follow the secure credential creation process above first.
+
+#### Step 2: Connect Suncorp Account via Basiq Dashboard
+
+**Important:** This is a **one-time private setup** - never expose this flow publicly.
+
+1. **Login to Basiq Dashboard**
+   - Go to [Basiq Dashboard](https://dashboard.basiq.io/)
+   - Navigate to your application
+
+2. **Create a User**
+   - Go to "Users" section
+   - Click "Create User" 
+   - Give it a name like `suncorp-balance-user`
+   - **Copy the User ID** - you'll need this for `BASIQ_USER_ID`
+
+3. **Connect Bank Account**
+   - In the user details, click "Connect Account"
+   - Select "Suncorp Bank" from the institution list
+   - **Enter your actual Suncorp online banking credentials**
+   - Complete any multi-factor authentication
+   - Grant consent for balance access (90-365 days)
+
+4. **Verify Connection**
+   - You should see your Suncorp account listed
+   - Note the account ID and current balance
+   - **Your User ID is now ready for the app**
+
+#### Step 3: Add User ID to Environment
+```bash
+# Add this to your .env file
+BASIQ_USER_ID=your_copied_user_id_here
+```
+
+#### Step 4: Test Connection
+```bash
+# Start your app and test
+docker-compose up -d
+curl http://localhost:5000/get-balance
+```
+
+### Important Security Notes
+
+- ⚠️ **This connection process should ONLY be done by you privately**
+- ⚠️ **Never expose the connection flow in your public application**
+- ⚠️ **Monitor consent expiration** (typically 90-365 days)
+- ⚠️ **Keep your Basiq dashboard access secure**
+
+### Environment Setup
+
+1. Use sandbox for testing (free) or production (AUD $0.39/month/user)
+2. Refer to [Basiq Documentation](https://api.basiq.io/docs/) for latest requirements
+3. Monitor your usage in the Basiq dashboard
 
 ### Supported Banks
 
