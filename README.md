@@ -48,7 +48,7 @@ Test the app and Docker setup without any credentials:
 docker-compose -f docker-compose.demo.yml up -d
 
 # View your dashboard with demo data
-open http://localhost:5000
+open http://localhost:5001
 ```
 
 #### 🏦 Production Setup (With Real Basiq Data)
@@ -64,7 +64,7 @@ cp .env.example .env
 docker-compose up -d
 
 # 3. View your dashboard
-open http://localhost:5000
+open http://localhost:5001
 ```
 
 ### 🐍 Manual Python Setup
@@ -83,7 +83,7 @@ cp .env.example .env
 python app.py
 ```
 
-Visit `http://localhost:5000` to see your dashboard.
+Visit `http://localhost:5001` to see your dashboard.
 
 ## 🔧 API Endpoints
 
@@ -219,7 +219,7 @@ BASIQ_USER_ID=your_copied_user_id_here
 ```bash
 # Start your app and test
 docker-compose up -d
-curl http://localhost:5000/get-balance
+curl http://localhost:5001/get-balance
 ```
 
 ### Important Security Notes
@@ -298,7 +298,7 @@ docker-compose up -d
 
 # 3. Set up reverse proxy (nginx/traefik) for HTTPS
 # 4. Schedule daily refresh via cron
-0 6 * * * docker exec suncorp-balance-dashboard curl -s http://localhost:5000/refresh-balance
+0 6 * * * docker exec suncorp-balance-dashboard curl -s http://localhost:5001/refresh-balance
 ```
 
 ### 🔧 Manual Deployment
@@ -313,7 +313,7 @@ For traditional server deployment:
 
 Example cron job:
 ```bash
-0 6 * * * curl -s http://localhost:5000/refresh-balance
+0 6 * * * curl -s http://localhost:5001/refresh-balance
 ```
 
 ### 🛟 Docker Commands
