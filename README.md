@@ -39,7 +39,21 @@ TransparentBalanceApp/
 
 ### 🐳 Docker (Recommended)
 
-The easiest way to run the application:
+#### 🚀 Quick Demo (No Basiq Setup Required)
+
+Test the app and Docker setup without any credentials:
+
+```bash
+# Start demo mode with fake data
+docker-compose -f docker-compose.demo.yml up -d
+
+# View your dashboard with demo data
+open http://localhost:5000
+```
+
+#### 🏦 Production Setup (With Real Basiq Data)
+
+For real bank data:
 
 ```bash
 # 1. Configure environment

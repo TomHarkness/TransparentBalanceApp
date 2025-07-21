@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  balance-app-demo:
+    build: .
+    container_name: suncorp-balance-demo
+    ports:
+      - "5000:5000"
+    environment:
+      - DEMO_MODE=true
+      - BASIQ_CLIENT_ID=demo_client_id
+      - BASIQ_CLIENT_SECRET=demo_client_secret
+      - BASIQ_USER_ID=demo_user_id
+      - FLASK_ENV=development
+    volumes:
+      # Persistent storage for cache files
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/get-balance"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - balance-network
+
+networks:
+  balance-network:
+    driver: bridge

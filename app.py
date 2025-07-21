@@ -12,6 +12,7 @@ CORS(app)
 BASIQ_API_URL = "https://au-api.basiq.io"
 CACHE_FILE = "balance_cache.json"
 TOKEN_FILE = "access_token.json"
+DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
 
 def get_stored_token():
     """Load stored access token from file"""
@@ -65,7 +66,18 @@ def get_access_token():
     return access_token
 
 def fetch_balance_from_basiq():
-    """Fetch balance from Basiq API"""
+    """Fetch balance from Basiq API or return demo data"""
+    if DEMO_MODE:
+        # Return demo data for testing
+        import random
+        demo_balance = round(random.uniform(1200, 5000), 2)
+        return {
+            'balance': demo_balance,
+            'currency': 'AUD',
+            'last_updated': datetime.now().isoformat(),
+            'status': 'success'
+        }
+    
     try:
         access_token = get_access_token()
         user_id = os.getenv('BASIQ_USER_ID')
