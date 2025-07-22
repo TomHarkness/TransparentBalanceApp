@@ -134,8 +134,11 @@ def fetch_balance_from_basiq():
         accounts_data = response.json()
         print(f"[DEBUG] Accounts data received: {accounts_data}")
         
-        # Find account and get balance (Suncorp for production, Hooli for sandbox)
-        target_institution = 'AU.SUNCORP' if DEMO_MODE != 'sandbox' else 'AU00001'  # Hooli bank ID
+        # Find account and get balance - configurable via environment variable
+        target_institution = os.getenv('BASIQ_TARGET_INSTITUTION')
+        if not target_institution:
+            # Default fallback based on demo mode
+            target_institution = 'AU.SUNCORP' if DEMO_MODE != 'sandbox' else 'AU00000'  # Hooli bank ID
         print(f"[DEBUG] Looking for institution: {target_institution}")
         
         if not accounts_data.get('data'):

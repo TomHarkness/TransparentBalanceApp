@@ -35,9 +35,41 @@ You are assisting in building a **public-facing tool** that securely fetches and
 
 ---
 
+## 🔑 Basiq API Authentication (Critical)
+
+**IMPORTANT:** Basiq API keys come in a specific format that must be handled correctly:
+
+1. **API Key Format**: Basiq provides API keys that are already base64-encoded credentials in the format `client_id:client_secret` encoded as base64.
+
+2. **Correct Authentication**: 
+   ```python
+   # CORRECT - Use the API key directly as it's already base64 encoded
+   headers = {'Authorization': f'Basic {api_secret}'}
+   ```
+
+3. **Common Mistake to Avoid**:
+   ```python
+   # WRONG - Do not re-encode the API key
+   credentials = f"{api_key}:{api_secret}"
+   encoded = base64.b64encode(credentials.encode()).decode()
+   ```
+
+4. **Environment Variables**:
+   - `BASIQ_API_KEY`: The key name (e.g., "testkey") - for logging/identification only
+   - `BASIQ_API_SECRET`: The actual base64-encoded credentials to use directly
+
+5. **Token Endpoint**: Always use `https://au-api.basiq.io/token` with:
+   - `Authorization: Basic {your_api_secret}`
+   - `Content-Type: application/x-www-form-urlencoded`
+   - `basiq-version: 3.0`
+   - Body: `scope=SERVER_ACCESS`
+
+---
+
 ## 📅 Consent & Token Management
 
-* Handle token expiry with proper refresh logic.
+* Handle token expiry with proper refresh logic (tokens expire after 60 minutes).
+* Cache tokens to minimize unnecessary token generation requests.
 * Handle user consent expiration (typically 90–365 days) gracefully.
 * Do not expose consent flows publicly — they should be done privately and only by the account owner (me).
 
