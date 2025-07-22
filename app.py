@@ -156,8 +156,12 @@ def fetch_balance_from_basiq():
             
             if institution_id == target_institution or DEMO_MODE == 'sandbox':
                 # In sandbox, use first available account
-                balance_data = account.get('balance', {})
-                balance = float(balance_data.get('current', 0))
+                balance_data = account.get('balance')
+                # Balance can be either a string value or object with 'current' field
+                if isinstance(balance_data, dict):
+                    balance = float(balance_data.get('current', 0))
+                else:
+                    balance = float(balance_data or 0)
                 print(f"[DEBUG] Found matching account with balance: ${balance}")
                 return {
                     'balance': balance,
