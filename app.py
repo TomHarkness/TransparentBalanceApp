@@ -67,8 +67,8 @@ def get_access_token():
 
 def fetch_balance_from_basiq():
     """Fetch balance from Basiq API or return demo data"""
-    if DEMO_MODE:
-        # Return demo data for testing
+    if DEMO_MODE == 'true':
+        # Return local fake data for testing
         import random
         demo_balance = round(random.uniform(1200, 5000), 2)
         return {
@@ -77,6 +77,9 @@ def fetch_balance_from_basiq():
             'last_updated': datetime.now().isoformat(),
             'status': 'success'
         }
+    elif DEMO_MODE == 'sandbox':
+        # Use real Basiq sandbox API with Hooli bank - no changes needed to API calls
+        pass
     
     try:
         access_token = get_access_token()
@@ -97,9 +100,13 @@ def fetch_balance_from_basiq():
         
         accounts_data = response.json()
         
-        # Find Suncorp account and get balance
+        # Find account and get balance (Suncorp for production, Hooli for sandbox)
+        target_institution = 'AU.SUNCORP' if DEMO_MODE != 'sandbox' else 'AU00001'  # Hooli bank ID
+        
         for account in accounts_data.get('data', []):
-            if account.get('institution', {}).get('id') == 'AU.SUNCORP':
+            institution_id = account.get('institution', {}).get('id')
+            if institution_id == target_institution or DEMO_MODE == 'sandbox':
+                # In sandbox, use first available account
                 balance = float(account.get('balance', {}).get('current', 0))
                 return {
                     'balance': balance,
@@ -108,7 +115,8 @@ def fetch_balance_from_basiq():
                     'status': 'success'
                 }
         
-        return {'error': 'Suncorp account not found', 'status': 'error'}
+        bank_name = 'Hooli' if DEMO_MODE == 'sandbox' else 'Suncorp'
+        return {'error': f'{bank_name} account not found', 'status': 'error'}
         
     except Exception as e:
         return {'error': str(e), 'status': 'error'}

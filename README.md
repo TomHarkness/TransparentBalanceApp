@@ -39,15 +39,26 @@ TransparentBalanceApp/
 
 ### 🐳 Docker (Recommended)
 
-#### 🚀 Quick Demo (No Basiq Setup Required)
+#### 🚀 Quick Demo Options
 
-Test the app and Docker setup without any credentials:
-
+**Option 1: Local Fake Data (No API calls)**
 ```bash
-# Start demo mode with fake data
-docker-compose -f docker-compose.demo.yml up -d
+# Edit .env.demo and set DEMO_MODE=true for local fake data
+docker compose -f docker-compose.demo.yml up -d
+open http://localhost:5001
+```
 
-# View your dashboard with demo data
+**Option 2: Real Basiq Sandbox with Hooli Bank 🏦**
+```bash
+# 1. Get free sandbox credentials from https://dashboard.basiq.io/
+# 2. Edit .env.demo with your sandbox credentials:
+#    DEMO_MODE=sandbox
+#    BASIQ_CLIENT_ID=your_sandbox_client_id
+#    BASIQ_CLIENT_SECRET=your_sandbox_client_secret
+# 3. Create demo user with Hooli bank connection (see guide below)
+# 4. Add BASIQ_USER_ID to .env.demo
+
+docker compose -f docker-compose.demo.yml up -d
 open http://localhost:5001
 ```
 
@@ -61,7 +72,7 @@ cp .env.example .env
 # Edit .env with your Basiq credentials
 
 # 2. Start with Docker Compose
-docker-compose up -d
+docker compose up -d
 
 # 3. View your dashboard
 open http://localhost:5001
@@ -142,12 +153,15 @@ The app automatically handles:
 
 #### Step 1: Create Basiq Developer Account
 1. Visit [Basiq Dashboard](https://dashboard.basiq.io/)
-2. Log in with your developer credentials
+2. Sign up for free developer access
+3. Log in with your developer credentials
 
 #### Step 2: Create Application
 1. Go to "Applications" → "Create Application"
 2. Name it: `BalanceViewerReadOnly` or whatever.. 
-3. Select environment (Sandbox for testing, Production for live)
+3. Select environment:
+   - **Sandbox** for testing with Hooli demo bank (FREE, 500 connection limit)
+   - **Production** for live Suncorp data (AUD $0.39/month/user)
 
 #### Step 3: Generate API Key
 1. Within your application, go to "API Keys" tab
@@ -178,26 +192,40 @@ Under **Actions** (required for data sync):
 - Set strict read-only file permissions on config files
 - Regularly rotate API credentials
 
-### 🏦 Connecting Your Suncorp Account
+### 🏦 Connecting Bank Accounts
 
-#### Step 1: Complete API Setup
-Follow the secure credential creation process above first.
+#### Option A: Hooli Demo Bank (Sandbox Testing) 🧪
 
-#### Step 2: Connect Suncorp Account via Basiq Dashboard
+**Perfect for testing without real bank credentials!**
+
+1. **Complete API Setup** (Sandbox environment)
+2. **Create Demo User**
+   - Go to "Users" section in Basiq Dashboard
+   - Click "Create User"
+   - Name: `hooli-demo-user`
+   - **Copy the User ID**
+
+3. **Connect Hooli Demo Bank**
+   - Click "Connect Account" in user details
+   - Search for and select **"Hooli Bank"**
+   - Use these test credentials:
+     - **Username**: `Wentworth-Smith`
+     - **Password**: `whislter`
+   - Complete the demo authentication flow
+   - **No real bank details required!**
+
+#### Option B: Real Suncorp Account (Production) 🏦
 
 **Important:** This is a **one-time private setup** - never expose this flow publicly.
 
-1. **Login to Basiq Dashboard**
-   - Go to [Basiq Dashboard](https://dashboard.basiq.io/)
-   - Navigate to your application
-
+1. **Complete API Setup** (Production environment)
 2. **Create a User**
    - Go to "Users" section
    - Click "Create User" 
    - Give it a name like `suncorp-balance-user`
    - **Copy the User ID** - you'll need this for `BASIQ_USER_ID`
 
-3. **Connect Bank Account**
+3. **Connect Real Suncorp Account**
    - In the user details, click "Connect Account"
    - Select "Suncorp Bank" from the institution list
    - **Enter your actual Suncorp online banking credentials**
@@ -218,7 +246,7 @@ BASIQ_USER_ID=your_copied_user_id_here
 #### Step 4: Test Connection
 ```bash
 # Start your app and test
-docker-compose up -d
+docker compose up -d
 curl http://localhost:5001/get-balance
 ```
 
@@ -294,7 +322,7 @@ cp .env.example .env
 # Edit .env with production credentials
 
 # 2. Deploy with Docker Compose
-docker-compose up -d
+docker compose up -d
 
 # 3. Set up reverse proxy (nginx/traefik) for HTTPS
 # 4. Schedule daily refresh via cron
@@ -320,13 +348,13 @@ Example cron job:
 
 ```bash
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Stop the application
-docker-compose down
+docker compose down
 
 # Rebuild after changes
-docker-compose up --build -d
+docker compose up --build -d
 
 # Execute commands in container
 docker exec -it suncorp-balance-dashboard /bin/bash
