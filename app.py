@@ -39,10 +39,14 @@ def get_access_token():
     """Get fresh access token from Basiq API"""
     stored_token = get_stored_token()
     if stored_token:
+        print(f"[DEBUG] Using stored access token")
         return stored_token
     
     api_key = os.getenv('BASIQ_API_KEY')
     api_secret = os.getenv('BASIQ_API_SECRET')
+    
+    print(f"[DEBUG] API Key: {api_key}")
+    print(f"[DEBUG] API Secret: {'*' * (len(api_secret) - 8) + api_secret[-8:] if api_secret else 'None'}")
     
     if not api_key or not api_secret:
         raise ValueError("Missing BASIQ_API_KEY or BASIQ_API_SECRET environment variables")
@@ -55,10 +59,16 @@ def get_access_token():
         'client_secret': api_secret
     }
     
+    print(f"[DEBUG] Requesting token from: {auth_url}")
     response = requests.post(auth_url, headers=headers, data=data)
-    response.raise_for_status()
+    print(f"[DEBUG] Token response status: {response.status_code}")
+    
+    if response.status_code != 200:
+        print(f"[ERROR] Token request failed: {response.status_code} - {response.text}")
+        response.raise_for_status()
     
     token_info = response.json()
+    print(f"[DEBUG] Token response: {token_info}")
     access_token = token_info['access_token']
     expires_in = token_info.get('expires_in', 3600)
     
@@ -71,6 +81,7 @@ def fetch_balance_from_basiq():
         # Return local fake data for testing
         import random
         demo_balance = round(random.uniform(1200, 5000), 2)
+        print(f"[DEBUG] Using local fake data: ${demo_balance}")
         return {
             'balance': demo_balance,
             'currency': 'AUD',
@@ -78,12 +89,14 @@ def fetch_balance_from_basiq():
             'status': 'success'
         }
     elif DEMO_MODE == 'sandbox':
-        # Use real Basiq sandbox API with Hooli bank - no changes needed to API calls
-        pass
+        print(f"[DEBUG] Using sandbox mode with Basiq API")
     
     try:
+        print(f"[DEBUG] Fetching access token...")
         access_token = get_access_token()
         user_id = os.getenv('BASIQ_USER_ID')
+        
+        print(f"[DEBUG] User ID: {user_id}")
         
         if not user_id:
             raise ValueError("Missing BASIQ_USER_ID environment variable")
@@ -95,19 +108,36 @@ def fetch_balance_from_basiq():
         
         # Get accounts
         accounts_url = f"{BASIQ_API_URL}/users/{user_id}/accounts"
+        print(f"[DEBUG] Calling Basiq API: {accounts_url}")
+        
         response = requests.get(accounts_url, headers=headers)
-        response.raise_for_status()
+        print(f"[DEBUG] Basiq API response status: {response.status_code}")
+        print(f"[DEBUG] Basiq API response headers: {dict(response.headers)}")
+        
+        if response.status_code != 200:
+            print(f"[ERROR] Basiq API error: {response.status_code} - {response.text}")
+            return {'error': f'Basiq API error: {response.status_code}', 'status': 'error'}
         
         accounts_data = response.json()
+        print(f"[DEBUG] Accounts data received: {accounts_data}")
         
         # Find account and get balance (Suncorp for production, Hooli for sandbox)
         target_institution = 'AU.SUNCORP' if DEMO_MODE != 'sandbox' else 'AU00001'  # Hooli bank ID
+        print(f"[DEBUG] Looking for institution: {target_institution}")
+        
+        if not accounts_data.get('data'):
+            print(f"[ERROR] No accounts found in response")
+            return {'error': 'No accounts found', 'status': 'error'}
         
         for account in accounts_data.get('data', []):
             institution_id = account.get('institution', {}).get('id')
+            print(f"[DEBUG] Found account with institution: {institution_id}")
+            
             if institution_id == target_institution or DEMO_MODE == 'sandbox':
                 # In sandbox, use first available account
-                balance = float(account.get('balance', {}).get('current', 0))
+                balance_data = account.get('balance', {})
+                balance = float(balance_data.get('current', 0))
+                print(f"[DEBUG] Found matching account with balance: ${balance}")
                 return {
                     'balance': balance,
                     'currency': 'AUD',
@@ -116,9 +146,13 @@ def fetch_balance_from_basiq():
                 }
         
         bank_name = 'Hooli' if DEMO_MODE == 'sandbox' else 'Suncorp'
+        print(f"[ERROR] {bank_name} account not found in {len(accounts_data.get('data', []))} accounts")
         return {'error': f'{bank_name} account not found', 'status': 'error'}
         
     except Exception as e:
+        print(f"[ERROR] Exception in fetch_balance_from_basiq: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {'error': str(e), 'status': 'error'}
 
 def get_cached_balance():
