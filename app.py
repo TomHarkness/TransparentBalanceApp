@@ -54,9 +54,8 @@ def get_access_token():
     # Basiq uses Basic Authentication with the API key for token requests
     import base64
     
-    # Create Basic Auth header using API key as username and secret as password
-    credentials = f"{api_key}:{api_secret}"
-    encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+    # Use the pre-encoded API secret directly (it's already base64 encoded)
+    encoded_credentials = api_secret
     
     auth_url = f"{BASIQ_API_URL}/token"
     headers = {
