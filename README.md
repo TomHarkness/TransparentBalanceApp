@@ -106,14 +106,33 @@ Visit `http://localhost:5001` to see your dashboard.
 
 - `GET /get-balance` - Returns cached balance (24-hour cache)
 - `GET /refresh-balance` - Forces fresh balance fetch
+- `GET /get-transactions` - Returns recent transactions (1-hour cache, requires DISPLAY_TRANSACTIONS=true)
 - `GET /` - Serves the main dashboard
 
 ### Response Format
 
+**Balance Response:**
 ```json
 {
   "balance": 1542.55,
   "currency": "AUD",
+  "last_updated": "2024-01-15T10:30:00",
+  "status": "success"
+}
+```
+
+**Transactions Response:**
+```json
+{
+  "transactions": [
+    {
+      "id": "txn_123",
+      "description": "Woolworths",
+      "amount": -45.67,
+      "postDate": "2024-01-15T08:30:00Z",
+      "direction": "debit"
+    }
+  ],
   "last_updated": "2024-01-15T10:30:00",
   "status": "success"
 }
@@ -139,11 +158,13 @@ Example:
 
 ## 📊 Features
 
-- **Automatic Caching** - Fetches balance once per 24 hours
+- **Automatic Caching** - Fetches balance once per 24 hours, transactions every hour
 - **Manual Refresh** - Button to force immediate update
+- **Transaction History** - Scrollable list of recent transactions (toggleable via DISPLAY_TRANSACTIONS)
 - **Responsive Design** - Works on desktop and mobile
 - **Error Handling** - Graceful fallback for API issues
 - **Status Indicators** - Visual feedback for connection status
+- **Security First** - No sensitive data exposed in transaction history
 
 ## 🔄 Token Management
 
@@ -175,7 +196,7 @@ The app automatically handles:
 3. **API Key Name**: `balance-key` (this becomes your `BASIQ_API_KEY`)
 4. **Copy the API Key Secret immediately** (cannot retrieve later - this becomes your `BASIQ_API_SECRET`)
 
-#### Step 4: Set Minimal Permissions (Security Critical)
+#### Step 4: Set Permissions (Security Critical)
 
 **✅ Required Permissions for Balance-Only Access:**
 
@@ -189,6 +210,12 @@ Under **Actions** (required for data sync):
 - ✅ `GET /users/{userId}/actions/{actionId}`
 - ✅ `GET /actions/{actionId}/results`
 - ✅ `GET /actions/{actionId}/results/{resultId}`
+
+**✅ Additional Permissions for Transaction History (Optional):**
+
+Under **Transactions** (only if you set `DISPLAY_TRANSACTIONS=true`):
+- ✅ `GET /users/{userId}/transactions` - **Required for transaction display**
+- ✅ `GET /users/{userId}/transactions/{transactionId}` - **Optional for detailed transaction data**
 
 **❌ Disable Everything Else** for minimal attack surface.
 
@@ -295,17 +322,38 @@ setInterval(() => widget.fetchBalance(), 30 * 60 * 1000); // 30 minutes
 
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `BASIQ_API_KEY` | Your Basiq API key name | Yes |
-| `BASIQ_API_SECRET` | Your Basiq API key secret | Yes |
-| `BASIQ_USER_ID` | User ID from connecting your bank account | Yes |
-| `FLASK_ENV` | Flask environment (production/development) | No |
-| `FLASK_DEBUG` | Enable Flask debug mode | No |
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `BASIQ_API_KEY` | Your Basiq API key name | Yes | - |
+| `BASIQ_API_SECRET` | Your Basiq API key secret | Yes | - |
+| `BASIQ_USER_ID` | User ID from connecting your bank account | Yes | - |
+| `DISPLAY_TRANSACTIONS` | Enable transaction history display | No | `false` |
+| `DEMO_MODE` | Use demo data (`true`, `sandbox`, `false`) | No | `false` |
+| `FLASK_ENV` | Flask environment (production/development) | No | - |
+| `FLASK_DEBUG` | Enable Flask debug mode | No | - |
+
+### Transaction Display Toggle
+
+Set `DISPLAY_TRANSACTIONS=true` in your `.env` file to enable transaction history:
+
+```bash
+# Enable transaction history display
+DISPLAY_TRANSACTIONS=true
+
+# Disable transaction history (default)
+DISPLAY_TRANSACTIONS=false
+```
+
+**Security Note:** When transactions are enabled:
+- Only basic transaction data is exposed (description, amount, date)
+- No account numbers, full transaction IDs, or sensitive metadata
+- Transactions are cached for 1 hour to minimize API calls
+- Requires additional Basiq API permissions (see setup guide above)
 
 ### Cache Files
 
 - `balance_cache.json` - Stores the latest balance data
+- `transactions_cache.json` - Stores recent transaction data (if DISPLAY_TRANSACTIONS=true)
 - `access_token.json` - Stores API access tokens with expiry
 
 ## 🔒 Security Considerations

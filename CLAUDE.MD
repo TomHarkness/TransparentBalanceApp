@@ -13,7 +13,9 @@ You are assisting in building a **public-facing tool** that securely fetches and
    * Free from account numbers, user IDs, or metadata
 4. Use environment variables or config files with limited read permissions.
 5. Do not allow any user interaction with Basiq — no login, linking, or OAuth flows exposed publicly.
-6. **Minimal API permissions only** — enable only these 7 Basiq endpoints:
+6. **API permissions** — enable these Basiq endpoints based on features needed:
+   
+   **Balance-Only Mode (Minimal):**
    * `GET /users/{userId}/accounts`
    * `GET /users/{userId}/accounts/{accountId}`
    * `POST /users/{userId}/actions`
@@ -21,6 +23,11 @@ You are assisting in building a **public-facing tool** that securely fetches and
    * `GET /users/{userId}/actions/{actionId}`
    * `GET /actions/{actionId}/results`
    * `GET /actions/{actionId}/results/{resultId}`
+   
+   **With Transactions (Additional):**
+   * `GET /users/{userId}/transactions` - **Required when DISPLAY_TRANSACTIONS=true**
+   * `GET /users/{userId}/transactions/{transactionId}` - **Optional for detailed transaction data**
+
 7. **Disable all other Basiq permissions** for minimal attack surface.
 8. Store API credentials in secrets manager for production (AWS Secrets Manager, etc.).
 
@@ -99,9 +106,10 @@ You are assisting in building a **public-facing tool** that securely fetches and
 * "Use a Flask route like `/get-balance` that returns only `{ balance: 1542.55 }` as JSON."
 * "Write the balance to a cached file every 24 hours using a cron job."
 * "Protect all API credentials with environment variables."
-* "Create Basiq API key with minimal permissions (only 7 required endpoints)."
+* "Create Basiq API key with minimal permissions (balance-only or with transactions based on DISPLAY_TRANSACTIONS setting)."
 * "Use Docker for consistent deployment with security best practices."
 * "Store credentials in AWS Secrets Manager for production."
+* "Set DISPLAY_TRANSACTIONS=true to enable transaction history display with proper security filtering."
 
 ---
 

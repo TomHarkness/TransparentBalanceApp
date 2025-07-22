@@ -12,7 +12,9 @@ CORS(app)
 BASIQ_API_URL = "https://au-api.basiq.io"
 CACHE_FILE = "balance_cache.json"
 TOKEN_FILE = "access_token.json"
+TRANSACTIONS_CACHE_FILE = "transactions_cache.json"
 DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
+DISPLAY_TRANSACTIONS = os.getenv('DISPLAY_TRANSACTIONS', 'false').lower() == 'true'
 
 def get_stored_token():
     """Load stored access token from file"""
@@ -180,6 +182,111 @@ def fetch_balance_from_basiq():
         traceback.print_exc()
         return {'error': str(e), 'status': 'error'}
 
+def fetch_transactions_from_basiq():
+    """Fetch recent transactions from Basiq API or return demo data"""
+    if not DISPLAY_TRANSACTIONS:
+        return {'error': 'Transactions display disabled', 'status': 'disabled'}
+    
+    if DEMO_MODE == 'true':
+        # Return local fake transaction data for testing
+        import random
+        from datetime import datetime, timedelta
+        
+        demo_transactions = []
+        for i in range(15):  # Generate 15 demo transactions
+            days_ago = random.randint(0, 90)
+            date = datetime.now() - timedelta(days=days_ago)
+            amount = round(random.uniform(-200, -10), 2)  # Mostly expenses
+            if random.random() > 0.8:  # 20% chance of income
+                amount = abs(amount) * random.uniform(5, 20)
+            
+            merchants = ['Woolworths', 'Coles', 'Shell', 'McDonald\'s', 'Netflix', 'Spotify', 
+                        'Amazon', 'Uber', 'Coffee Club', 'IGA', 'Bunnings', 'Chemist Warehouse']
+            
+            demo_transactions.append({
+                'id': f'demo_txn_{i}',
+                'description': random.choice(merchants),
+                'amount': amount,
+                'postDate': date.isoformat(),
+                'direction': 'debit' if amount < 0 else 'credit'
+            })
+        
+        print(f"[DEBUG] Using demo transactions: {len(demo_transactions)} items")
+        return {
+            'transactions': demo_transactions,
+            'last_updated': datetime.now().isoformat(),
+            'status': 'success'
+        }
+    
+    try:
+        print(f"[DEBUG] Fetching transactions...")
+        access_token = get_access_token()
+        user_id = os.getenv('BASIQ_USER_ID')
+        
+        if not user_id:
+            raise ValueError("Missing BASIQ_USER_ID environment variable")
+        
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json'
+        }
+        
+        # Get transactions with pagination
+        transactions_url = f"{BASIQ_API_URL}/users/{user_id}/transactions"
+        print(f"[DEBUG] Calling Basiq transactions API: {transactions_url}")
+        
+        # Add query parameters for recent transactions
+        params = {
+            'limit': 50,  # Get last 50 transactions
+            'sort': '-postDate'  # Sort by most recent first
+        }
+        
+        response = requests.get(transactions_url, headers=headers, params=params)
+        print(f"[DEBUG] Basiq transactions API response status: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"[ERROR] Basiq transactions API error: {response.status_code} - {response.text}")
+            return {'error': f'Basiq transactions API error: {response.status_code}', 'status': 'error'}
+        
+        transactions_data = response.json()
+        print(f"[DEBUG] Transactions data received: {len(transactions_data.get('data', []))} transactions")
+        
+        # Filter and sanitize transaction data for public display
+        safe_transactions = []
+        for txn in transactions_data.get('data', []):
+            safe_transactions.append({
+                'id': txn.get('id'),
+                'description': txn.get('description', 'Unknown'),
+                'amount': float(txn.get('amount', 0)),
+                'postDate': txn.get('postDate'),
+                'direction': txn.get('direction', 'unknown')
+            })
+        
+        return {
+            'transactions': safe_transactions,
+            'last_updated': datetime.now().isoformat(),
+            'status': 'success'
+        }
+        
+    except Exception as e:
+        print(f"[ERROR] Exception in fetch_transactions_from_basiq: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {'error': str(e), 'status': 'error'}
+
+def get_cached_transactions():
+    """Get transactions from cache file"""
+    try:
+        with open(TRANSACTIONS_CACHE_FILE, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {'error': 'No cached transactions found', 'status': 'error'}
+
+def cache_transactions(transactions_data):
+    """Save transactions to cache file"""
+    with open(TRANSACTIONS_CACHE_FILE, 'w') as f:
+        json.dump(transactions_data, f)
+
 def get_cached_balance():
     """Get balance from cache file"""
     try:
@@ -223,6 +330,41 @@ def get_balance():
     
     if balance_data.get('status') == 'error':
         safe_data['error'] = 'Unable to fetch balance'
+    
+    return jsonify(safe_data)
+
+@app.route('/get-transactions')
+def get_transactions():
+    """API endpoint to get recent transactions"""
+    if not DISPLAY_TRANSACTIONS:
+        return jsonify({'error': 'Transactions display disabled', 'status': 'disabled'})
+    
+    cached_data = get_cached_transactions()
+    
+    # Return cached data if it exists and is recent (less than 1 hour old)
+    if cached_data.get('status') == 'success':
+        try:
+            last_updated = datetime.fromisoformat(cached_data['last_updated'])
+            if datetime.now() - last_updated < timedelta(hours=1):
+                return jsonify(cached_data)
+        except (KeyError, ValueError):
+            pass
+    
+    # Fetch fresh transaction data
+    transactions_data = fetch_transactions_from_basiq()
+    
+    if transactions_data.get('status') == 'success':
+        cache_transactions(transactions_data)
+    
+    # Return only safe transaction data (no account numbers, user IDs, etc.)
+    safe_data = {
+        'transactions': transactions_data.get('transactions', []),
+        'last_updated': transactions_data.get('last_updated'),
+        'status': transactions_data.get('status')
+    }
+    
+    if transactions_data.get('status') == 'error':
+        safe_data['error'] = 'Unable to fetch transactions'
     
     return jsonify(safe_data)
 

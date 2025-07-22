@@ -115,6 +115,66 @@
             font-size: 12px;
             margin-top: 8px;
         }
+
+        .transactions-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .transactions-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1d1d22;
+            margin-bottom: 12px;
+        }
+
+        .transactions-list {
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background: white;
+        }
+
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 12px;
+        }
+
+        .transaction-item:last-child {
+            border-bottom: none;
+        }
+
+        .transaction-description {
+            color: #1d1d22;
+            font-weight: 400;
+            flex-grow: 1;
+            text-align: left;
+        }
+
+        .transaction-amount {
+            font-weight: 500;
+            margin-left: 8px;
+        }
+
+        .transaction-amount.debit {
+            color: #ef4444;
+        }
+
+        .transaction-amount.credit {
+            color: #10b981;
+        }
+
+        .transaction-date {
+            color: #9ca3af;
+            font-size: 10px;
+            margin-left: 8px;
+        }
         /* EMBEDDABLE WIDGET ENDS HERE */
 
         .actions {
@@ -182,6 +242,13 @@
                 <span id="updateTime">Fetching balance...</span>
             </div>
             <div class="error-message" id="errorMessage" style="display: none;"></div>
+            
+            <div class="transactions-section" id="transactionsSection" style="display: none;">
+                <div class="transactions-title">Recent Transactions</div>
+                <div class="transactions-list" id="transactionsList">
+                    <div class="loading" style="padding: 20px; text-align: center;">Loading transactions...</div>
+                </div>
+            </div>
         </div>
         <!-- EMBEDDABLE WIDGET CODE ENDS HERE -->
         
@@ -208,6 +275,8 @@
                 this.statusIndicatorElement = document.getElementById('statusIndicator');
                 this.errorMessageElement = document.getElementById('errorMessage');
                 this.refreshBtn = document.getElementById('refreshBtn');
+                this.transactionsSectionElement = document.getElementById('transactionsSection');
+                this.transactionsListElement = document.getElementById('transactionsList');
             }
 
             async fetchBalance() {
@@ -219,6 +288,8 @@
                         this.displayBalance(data);
                         this.showStatus('success', this.formatLastUpdated(data.last_updated));
                         this.hideError();
+                        // Also fetch transactions if enabled
+                        this.fetchTransactions();
                     } else {
                         this.showError(data.error || 'Unable to fetch balance');
                         this.showStatus('error', 'Failed to update');
@@ -227,6 +298,27 @@
                     console.error('Error fetching balance:', error);
                     this.showError('Connection error');
                     this.showStatus('error', 'Connection failed');
+                }
+            }
+
+            async fetchTransactions() {
+                try {
+                    const response = await fetch(`${this.apiBaseUrl}/get-transactions`);
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        this.displayTransactions(data.transactions);
+                        this.transactionsSectionElement.style.display = 'block';
+                    } else if (data.status === 'disabled') {
+                        // Transactions are disabled, hide the section
+                        this.transactionsSectionElement.style.display = 'none';
+                    } else {
+                        // Error fetching transactions, hide the section
+                        this.transactionsSectionElement.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Error fetching transactions:', error);
+                    this.transactionsSectionElement.style.display = 'none';
                 }
             }
 
@@ -244,6 +336,8 @@
                         this.displayBalance(data);
                         this.showStatus('success', this.formatLastUpdated(data.last_updated));
                         this.hideError();
+                        // Also refresh transactions
+                        this.fetchTransactions();
                     } else {
                         this.showError(data.error || 'Unable to refresh balance');
                         this.showStatus('error', 'Failed to refresh');
@@ -258,6 +352,45 @@
                         this.refreshBtn.textContent = 'Refresh Balance';
                     }
                 }
+            }
+
+            displayTransactions(transactions) {
+                if (!transactions || transactions.length === 0) {
+                    this.transactionsListElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;">No transactions available</div>';
+                    return;
+                }
+
+                // Sort transactions by date (most recent first)
+                transactions.sort((a, b) => new Date(b.postDate) - new Date(a.postDate));
+
+                let html = '';
+                transactions.forEach(transaction => {
+                    const amount = parseFloat(transaction.amount);
+                    const isCredit = transaction.direction === 'credit' || amount > 0;
+                    const formattedAmount = new Intl.NumberFormat('en-AU', {
+                        style: 'currency',
+                        currency: 'AUD',
+                        minimumFractionDigits: 2
+                    }).format(Math.abs(amount));
+                    
+                    const date = new Date(transaction.postDate);
+                    const formattedDate = date.toLocaleDateString('en-AU', {
+                        month: 'short',
+                        day: 'numeric'
+                    });
+
+                    html += `
+                        <div class="transaction-item">
+                            <div class="transaction-description">${transaction.description || 'Unknown'}</div>
+                            <div class="transaction-amount ${isCredit ? 'credit' : 'debit'}">
+                                ${isCredit ? '+' : '-'}${formattedAmount}
+                            </div>
+                            <div class="transaction-date">${formattedDate}</div>
+                        </div>
+                    `;
+                });
+
+                this.transactionsListElement.innerHTML = html;
             }
 
             displayBalance(data) {
