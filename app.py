@@ -51,15 +51,28 @@ def get_access_token():
     if not api_key or not api_secret:
         raise ValueError("Missing BASIQ_API_KEY or BASIQ_API_SECRET environment variables")
     
+    # Basiq uses Basic Authentication with the API key for token requests
+    import base64
+    
+    # Create Basic Auth header using API key as username and secret as password
+    credentials = f"{api_key}:{api_secret}"
+    encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+    
     auth_url = f"{BASIQ_API_URL}/token"
-    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    headers = {
+        'Authorization': f'Basic {encoded_credentials}',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'basiq-version': '3.0'
+    }
+    
+    # Basiq may require scope parameter
     data = {
-        'grant_type': 'client_credentials',
-        'client_id': api_key,
-        'client_secret': api_secret
+        'scope': 'SERVER_ACCESS'
     }
     
     print(f"[DEBUG] Requesting token from: {auth_url}")
+    print(f"[DEBUG] Using Basic Auth with encoded credentials")
+    
     response = requests.post(auth_url, headers=headers, data=data)
     print(f"[DEBUG] Token response status: {response.status_code}")
     
@@ -68,10 +81,11 @@ def get_access_token():
         response.raise_for_status()
     
     token_info = response.json()
-    print(f"[DEBUG] Token response: {token_info}")
+    print(f"[DEBUG] Token response keys: {list(token_info.keys())}")
     access_token = token_info['access_token']
     expires_in = token_info.get('expires_in', 3600)
     
+    print(f"[DEBUG] Successfully obtained access token, expires in {expires_in} seconds")
     store_token(access_token, expires_in)
     return access_token
 
