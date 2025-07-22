@@ -249,26 +249,44 @@ Under **Transactions** (only if you set `DISPLAY_TRANSACTIONS=true`):
 
 #### Option B: Real Suncorp Account (Production) 🏦
 
-**Important:** This is a **one-time private setup** - never expose this flow publicly.
+**⚠️ CRITICAL:** Dashboard connections are **NOT valid for production!**  
+Production apps **MUST** use the Basiq Consent UI for CDR compliance.
 
-1. **Complete API Setup** (Production environment)
-2. **Create a User**
-   - Go to "Users" section
-   - Click "Create User" 
-   - Give it a name like `suncorp-balance-user`
-   - **Copy the User ID** - you'll need this for `BASIQ_USER_ID`
+> **📋 Implementation Note:** Admin consent flow interface is being added in the next update.  
+> Current version supports sandbox/demo modes only. Production consent flow coming soon!
 
-3. **Connect Real Suncorp Account**
-   - In the user details, click "Connect Account"
-   - Select "Suncorp Bank" from the institution list
-   - **Enter your actual Suncorp online banking credentials**
-   - Complete any multi-factor authentication
-   - Grant consent for balance access (90-365 days)
+### **Production Consent Flow Implementation Required**
 
-4. **Verify Connection**
-   - You should see your Suncorp account listed
-   - Note the account ID and current balance
-   - **Your User ID is now ready for the app**
+**You need to implement a secure admin interface for account connection:**
+
+1. **Create Admin Setup Route** (One-time use):
+   ```python
+   @app.route('/admin/setup', methods=['GET', 'POST'])
+   # Password-protected admin interface
+   ```
+
+2. **Consent Flow Process**:
+   - **Create User** via Basiq API
+   - **Generate CLIENT token** bound to userId  
+   - **Redirect to Basiq Consent UI**:
+     ```
+     https://consent.basiq.io/home?token={{client_token}}
+     ```
+   - **Handle consent callback** with granted permissions
+   - **Store userId** for production app
+
+3. **Implementation Requirements**:
+   - ✅ CDR compliant consent flow (mandatory)
+   - ✅ Basiq hosted Consent UI (handles banking credentials)
+   - ✅ User-initiated consent (must be done by account holder)  
+   - ✅ Secure admin authentication
+   - ✅ One-time setup process (not public-facing)
+
+4. **Security Notes**:
+   - Banking credentials never touch your server
+   - Consent UI handles all CDR compliance
+   - Admin interface needs strong password protection
+   - Process must be initiated by actual account holder
 
 #### Step 3: Add User ID to Environment
 ```bash
@@ -287,10 +305,12 @@ curl http://localhost:5001/get-balance
 
 ### Important Security Notes
 
-- ⚠️ **This connection process should ONLY be done by you privately**
-- ⚠️ **Never expose the connection flow in your public application**
+- ⚠️ **Production requires implementing proper consent flow** (not dashboard connections)
+- ⚠️ **Admin setup interface should be password-protected and private**
+- ⚠️ **Never expose banking credentials or consent flow to public users**
 - ⚠️ **Monitor consent expiration** (typically 90-365 days)
-- ⚠️ **Keep your Basiq dashboard access secure**
+- ⚠️ **Account connection must be initiated by the actual account holder**
+- ⚠️ **Remove/disable admin routes after initial setup**
 
 ### Environment Setup
 

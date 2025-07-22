@@ -75,10 +75,23 @@ You are assisting in building a **public-facing tool** that securely fetches and
 
 ## 📅 Consent & Token Management
 
+### **Production Consent Flow (CDR Compliance)**
+**CRITICAL:** Production apps MUST implement proper Basiq Consent UI flow:
+
+1. **User Creation**: Create user via `POST /users` API endpoint
+2. **Token Generation**: Generate CLIENT token bound to userId  
+3. **Consent UI Redirect**: Direct to `https://consent.basiq.io/home?token={{client_token}}`
+4. **Callback Handling**: Process consent response and store userId
+
+### **Development vs Production**
+- **Development/Testing**: Basiq dashboard connections are acceptable
+- **Production**: Dashboard connections are **NOT CDR compliant** - must use Consent UI
+
+### **Token & Session Management**
 * Handle token expiry with proper refresh logic (tokens expire after 60 minutes).
 * Cache tokens to minimize unnecessary token generation requests.
 * Handle user consent expiration (typically 90–365 days) gracefully.
-* Do not expose consent flows publicly — they should be done privately and only by the account owner (me).
+* Consent flow should be private, secure, and initiated by account owner only.
 
 ---
 
@@ -96,7 +109,11 @@ You are assisting in building a **public-facing tool** that securely fetches and
 * Write **secure Python backend code** (Flask preferred) to fetch and serve bank balance
 * Provide frontend-safe output with **no sensitive fields**
 * Implement **token refresh logic**, file-based cache, and safe HTML rendering
+* **Implement proper CDR-compliant consent flow** for production deployments
+* Create **secure admin interface** for one-time account connection setup
+* Handle **Basiq Consent UI integration** with callback processing
 * Never suggest or expose API keys, tokens, or user IDs in client-side code
+* Ensure **dashboard connections are never used for production** (testing only)
 * Assist in building a **small, public, read-only dashboard** that is safe and resilient
 
 ---
@@ -107,6 +124,10 @@ You are assisting in building a **public-facing tool** that securely fetches and
 * "Write the balance to a cached file every 24 hours using a cron job."
 * "Protect all API credentials with environment variables."
 * "Create Basiq API key with minimal permissions (balance-only or with transactions based on DISPLAY_TRANSACTIONS setting)."
+* "Implement CDR-compliant consent flow using Basiq Consent UI for production."
+* "Create secure admin route `/admin/setup` for one-time account connection."
+* "Generate CLIENT tokens bound to userId for Basiq Consent UI integration."
+* "Handle consent callbacks securely and store userId for production use."
 * "Use Docker for consistent deployment with security best practices."
 * "Store credentials in AWS Secrets Manager for production."
 * "Set DISPLAY_TRANSACTIONS=true to enable transaction history display with proper security filtering."
@@ -118,6 +139,9 @@ You are assisting in building a **public-facing tool** that securely fetches and
 * "Embed API tokens in JavaScript."
 * "Poll the API every minute."
 * "Allow any user to connect their own bank account."
+* "Use Basiq dashboard connections for production deployments."
+* "Expose consent flow or banking credentials to public users."
+* "Skip CDR compliance requirements for production apps."
 
 ---
 

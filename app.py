@@ -3,7 +3,7 @@ import json
 import time
 import requests
 from datetime import datetime, timedelta
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, render_template_string, request
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -15,6 +15,9 @@ TOKEN_FILE = "access_token.json"
 TRANSACTIONS_CACHE_FILE = "transactions_cache.json"
 DEMO_MODE = os.getenv('DEMO_MODE', 'false').lower() == 'true'
 DISPLAY_TRANSACTIONS = os.getenv('DISPLAY_TRANSACTIONS', 'false').lower() == 'true'
+# Consent flow configuration
+ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')  # Change in production!
+CONSENT_CALLBACK_URL = os.getenv('CONSENT_CALLBACK_URL', 'http://localhost:5000/admin/consent-callback')
 
 def get_stored_token():
     """Load stored access token from file"""
@@ -286,6 +289,85 @@ def cache_transactions(transactions_data):
     with open(TRANSACTIONS_CACHE_FILE, 'w') as f:
         json.dump(transactions_data, f)
 
+def create_basiq_user():
+    """Create a new user in Basiq for consent flow"""
+    try:
+        access_token = get_access_token()
+        
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'basiq-version': '3.0'
+        }
+        
+        # Create user with minimal data
+        user_data = {
+            'email': f'user_{int(time.time())}@example.com',  # Unique email
+            'mobile': '+61400000000'  # Placeholder mobile
+        }
+        
+        create_user_url = f"{BASIQ_API_URL}/users"
+        print(f"[DEBUG] Creating Basiq user: {create_user_url}")
+        
+        response = requests.post(create_user_url, headers=headers, json=user_data)
+        print(f"[DEBUG] Create user response status: {response.status_code}")
+        
+        if response.status_code != 201:
+            print(f"[ERROR] User creation failed: {response.status_code} - {response.text}")
+            return None
+            
+        user_response = response.json()
+        user_id = user_response.get('id')
+        print(f"[DEBUG] Created user with ID: {user_id}")
+        
+        return user_id
+        
+    except Exception as e:
+        print(f"[ERROR] Exception in create_basiq_user: {str(e)}")
+        return None
+
+def generate_client_token(user_id):
+    """Generate CLIENT token bound to specific userId for consent flow"""
+    try:
+        api_key = os.getenv('BASIQ_API_KEY')
+        api_secret = os.getenv('BASIQ_API_SECRET')
+        
+        if not api_key or not api_secret:
+            raise ValueError("Missing BASIQ_API_KEY or BASIQ_API_SECRET environment variables")
+        
+        auth_url = f"{BASIQ_API_URL}/token"
+        headers = {
+            'Authorization': f'Basic {api_secret}',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'basiq-version': '3.0'
+        }
+        
+        # Request CLIENT token bound to userId
+        data = {
+            'scope': 'CLIENT_ACCESS',
+            'userId': user_id
+        }
+        
+        print(f"[DEBUG] Requesting CLIENT token for user: {user_id}")
+        
+        response = requests.post(auth_url, headers=headers, data=data)
+        print(f"[DEBUG] CLIENT token response status: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"[ERROR] CLIENT token request failed: {response.status_code} - {response.text}")
+            return None
+        
+        token_info = response.json()
+        client_token = token_info.get('access_token')
+        
+        print(f"[DEBUG] Successfully generated CLIENT token")
+        return client_token
+        
+    except Exception as e:
+        print(f"[ERROR] Exception in generate_client_token: {str(e)}")
+        return None
+
 def get_cached_balance():
     """Get balance from cache file"""
     try:
@@ -382,10 +464,183 @@ def refresh_balance():
         'status': balance_data.get('status')
     })
 
+@app.route('/admin/setup', methods=['GET', 'POST'])
+def admin_setup():
+    """Admin interface for setting up Basiq consent flow"""
+    if DEMO_MODE:
+        return jsonify({'error': 'Admin setup not available in demo mode', 'status': 'disabled'})
+    
+    # Simple password protection
+    if request.method == 'POST':
+        password = request.form.get('password')
+        action = request.form.get('action')
+        
+        if password != ADMIN_PASSWORD:
+            return render_template_string(ADMIN_SETUP_TEMPLATE, error='Invalid password')
+        
+        if action == 'create_user':
+            # Step 1: Create user and generate consent URL
+            user_id = create_basiq_user()
+            if not user_id:
+                return render_template_string(ADMIN_SETUP_TEMPLATE, error='Failed to create user')
+            
+            client_token = generate_client_token(user_id)
+            if not client_token:
+                return render_template_string(ADMIN_SETUP_TEMPLATE, error='Failed to generate CLIENT token')
+            
+            # Generate consent URL
+            consent_url = f"https://consent.basiq.io/home?token={client_token}"
+            
+            return render_template_string(ADMIN_SETUP_TEMPLATE, 
+                                          success=True,
+                                          user_id=user_id,
+                                          consent_url=consent_url)
+    
+    return render_template_string(ADMIN_SETUP_TEMPLATE)
+
+@app.route('/admin/consent-callback')
+def consent_callback():
+    """Handle Basiq consent callback"""
+    # Get consent response parameters
+    consent_granted = request.args.get('success')
+    user_id = request.args.get('userId')
+    error = request.args.get('error')
+    
+    print(f"[DEBUG] Consent callback - Success: {consent_granted}, User ID: {user_id}, Error: {error}")
+    
+    if consent_granted == 'true' and user_id:
+        # Store the user ID for production use
+        with open('production_user_id.txt', 'w') as f:
+            f.write(user_id)
+        
+        return render_template_string(CONSENT_SUCCESS_TEMPLATE, user_id=user_id)
+    else:
+        return render_template_string(CONSENT_ERROR_TEMPLATE, error=error or 'Consent was denied')
+
 @app.route('/')
 def index():
     """Serve the main dashboard page"""
     return render_template_string(open('index.html').read())
+
+# HTML Templates for Admin Interface
+ADMIN_SETUP_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Setup - Basiq Consent Flow</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .error { color: red; margin: 10px 0; }
+        .success { color: green; margin: 10px 0; }
+        input, button { margin: 5px 0; padding: 10px; }
+        button { background: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .consent-url { background: #f0f0f0; padding: 15px; margin: 15px 0; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Basiq Consent Flow Setup</h1>
+    <p><strong>⚠️ WARNING:</strong> This is a one-time setup process for production deployment.</p>
+    
+    {% if error %}
+        <div class="error">❌ {{ error }}</div>
+    {% endif %}
+    
+    {% if success %}
+        <div class="success">✅ User created successfully!</div>
+        <p><strong>User ID:</strong> {{ user_id }}</p>
+        <p><strong>Next Steps:</strong></p>
+        <ol>
+            <li>Click the consent URL below to complete account connection</li>
+            <li>Login with your Suncorp banking credentials</li>
+            <li>Grant consent for balance access</li>
+            <li>You'll be redirected back to confirm success</li>
+        </ol>
+        
+        <div class="consent-url">
+            <strong>Consent URL:</strong><br>
+            <a href="{{ consent_url }}" target="_blank">{{ consent_url }}</a>
+        </div>
+        
+        <p><em>⚠️ After completing consent, remove this admin route for security!</em></p>
+    {% else %}
+        <form method="post">
+            <h3>Step 1: Authenticate</h3>
+            <input type="password" name="password" placeholder="Admin Password" required>
+            <br>
+            <button type="submit" name="action" value="create_user">🚀 Start Consent Flow</button>
+        </form>
+        
+        <div style="margin-top: 30px; padding: 15px; background: #f9f9f9;">
+            <h4>🔐 Security Notes:</h4>
+            <ul>
+                <li>This creates a new user in Basiq for your production app</li>
+                <li>You'll be redirected to Basiq's secure consent UI</li>
+                <li>Your banking credentials never touch this server</li>
+                <li>This route should be disabled after setup</li>
+            </ul>
+        </div>
+    {% endif %}
+</body>
+</html>
+"""
+
+CONSENT_SUCCESS_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Consent Granted - Success!</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+        .success { color: green; font-size: 18px; }
+        .user-id { background: #e8f5e8; padding: 15px; margin: 20px 0; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>🎉 Account Connected Successfully!</h1>
+    <div class="success">
+        ✅ Your Suncorp account has been securely connected to the balance dashboard.
+    </div>
+    
+    <div class="user-id">
+        <strong>Production User ID:</strong><br>
+        <code>{{ user_id }}</code><br>
+        <small>(This has been saved to production_user_id.txt)</small>
+    </div>
+    
+    <h3>Next Steps:</h3>
+    <ol style="text-align: left;">
+        <li>Add this User ID to your production environment variables</li>
+        <li>Update your .env file: <code>BASIQ_USER_ID={{ user_id }}</code></li>
+        <li>Remove or disable the /admin/setup route for security</li>
+        <li>Your balance dashboard is now ready for production!</li>
+    </ol>
+    
+    <p><a href="/">← Return to Balance Dashboard</a></p>
+</body>
+</html>
+"""
+
+CONSENT_ERROR_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Consent Failed</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+        .error { color: red; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h1>❌ Account Connection Failed</h1>
+    <div class="error">
+        {{ error }}
+    </div>
+    
+    <p>Please try the setup process again:</p>
+    <p><a href="/admin/setup">← Return to Admin Setup</a></p>
+</body>
+</html>
+"""
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
