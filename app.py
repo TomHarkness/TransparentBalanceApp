@@ -190,7 +190,6 @@ def fetch_transactions_from_basiq():
     if DEMO_MODE == 'true':
         # Return local fake transaction data for testing
         import random
-        from datetime import datetime, timedelta
         
         demo_transactions = []
         for i in range(15):  # Generate 15 demo transactions
