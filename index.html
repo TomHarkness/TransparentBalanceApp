@@ -12,156 +12,156 @@
         }
 
         body {
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f7f7f8;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            color: #1d1d22;
+            line-height: 1.5;
         }
 
         .dashboard-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            padding: 40px;
-            max-width: 500px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 32px;
+            max-width: 400px;
             width: 100%;
             text-align: center;
         }
 
         .bank-logo {
-            width: 60px;
-            height: 60px;
-            background: #FF6B35;
-            border-radius: 15px;
+            width: 48px;
+            height: 48px;
+            background: #1d1d22;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 20px;
-            font-weight: bold;
+            margin: 0 auto 16px;
+            font-weight: 500;
             color: white;
-            font-size: 24px;
+            font-size: 20px;
         }
 
         h1 {
-            color: #2d3748;
-            font-size: 28px;
-            font-weight: 600;
-            margin-bottom: 10px;
+            color: #1d1d22;
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 8px;
         }
 
         .subtitle {
-            color: #718096;
-            font-size: 16px;
-            margin-bottom: 30px;
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 24px;
+            font-weight: 400;
         }
 
         /* EMBEDDABLE WIDGET STARTS HERE */
         .balance-widget {
-            background: #f7fafc;
-            border-radius: 15px;
-            padding: 30px;
-            margin: 20px 0;
-            border: 1px solid #e2e8f0;
+            background: #f7f7f8;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 16px 0;
+            border: 1px solid #e5e7eb;
         }
 
         .balance-display {
-            font-size: 48px;
-            font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 10px;
+            font-size: 32px;
+            font-weight: 500;
+            color: #1d1d22;
+            margin-bottom: 8px;
         }
 
         .currency {
-            font-size: 24px;
-            color: #4a5568;
+            font-size: 18px;
+            color: #6b7280;
             font-weight: 400;
         }
 
         .last-updated {
-            color: #718096;
-            font-size: 14px;
-            margin-top: 15px;
+            color: #9ca3af;
+            font-size: 12px;
+            margin-top: 12px;
         }
 
         .status-indicator {
             display: inline-block;
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
-            margin-right: 8px;
+            margin-right: 6px;
         }
 
         .status-success {
-            background-color: #48bb78;
+            background-color: #10b981;
         }
 
         .status-error {
-            background-color: #f56565;
+            background-color: #ef4444;
         }
 
         .loading {
-            color: #4299e1;
-            font-style: italic;
+            color: #6b7280;
+            font-style: normal;
         }
 
         .error-message {
-            color: #e53e3e;
-            font-size: 14px;
-            margin-top: 10px;
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 8px;
         }
         /* EMBEDDABLE WIDGET ENDS HERE */
 
         .actions {
-            margin-top: 30px;
+            margin-top: 20px;
         }
 
         .refresh-btn {
-            background: linear-gradient(135deg, #4299e1, #3182ce);
+            background: #1d1d22;
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
+            transition: all 0.2s ease;
         }
 
         .refresh-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(66, 153, 225, 0.4);
+            background: #374151;
         }
 
         .refresh-btn:disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
+            background: #9ca3af;
         }
 
         .footer-note {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
-            color: #a0aec0;
-            font-size: 12px;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+            color: #9ca3af;
+            font-size: 11px;
         }
 
         @media (max-width: 480px) {
             .dashboard-container {
-                padding: 30px 20px;
+                padding: 24px 16px;
             }
             
             .balance-display {
-                font-size: 36px;
+                font-size: 28px;
             }
             
             h1 {
-                font-size: 24px;
+                font-size: 20px;
             }
         }
     </style>
