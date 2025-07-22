@@ -6,11 +6,9 @@ services:
     container_name: suncorp-balance-demo
     ports:
       - "5001:5000"
+    env_file:
+      - .env.demo
     environment:
-      - DEMO_MODE=true
-      - BASIQ_CLIENT_ID=demo_client_id
-      - BASIQ_CLIENT_SECRET=demo_client_secret
-      - BASIQ_USER_ID=demo_user_id
       - FLASK_ENV=development
     volumes:
       # Persistent storage for cache files

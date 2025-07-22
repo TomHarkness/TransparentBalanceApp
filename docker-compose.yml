@@ -7,8 +7,8 @@ services:
     ports:
       - "5001:5000"
     environment:
-      - BASIQ_CLIENT_ID=${BASIQ_CLIENT_ID}
-      - BASIQ_CLIENT_SECRET=${BASIQ_CLIENT_SECRET}
+      - BASIQ_API_KEY=${BASIQ_API_KEY}
+      - BASIQ_API_SECRET=${BASIQ_API_SECRET}
       - BASIQ_USER_ID=${BASIQ_USER_ID}
       - FLASK_ENV=production
     volumes:

@@ -41,18 +41,18 @@ def get_access_token():
     if stored_token:
         return stored_token
     
-    client_id = os.getenv('BASIQ_CLIENT_ID')
-    client_secret = os.getenv('BASIQ_CLIENT_SECRET')
+    api_key = os.getenv('BASIQ_API_KEY')
+    api_secret = os.getenv('BASIQ_API_SECRET')
     
-    if not client_id or not client_secret:
-        raise ValueError("Missing BASIQ_CLIENT_ID or BASIQ_CLIENT_SECRET environment variables")
+    if not api_key or not api_secret:
+        raise ValueError("Missing BASIQ_API_KEY or BASIQ_API_SECRET environment variables")
     
     auth_url = f"{BASIQ_API_URL}/token"
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     data = {
         'grant_type': 'client_credentials',
-        'client_id': client_id,
-        'client_secret': client_secret
+        'client_id': api_key,
+        'client_secret': api_secret
     }
     
     response = requests.post(auth_url, headers=headers, data=data)

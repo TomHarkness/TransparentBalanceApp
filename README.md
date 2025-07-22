@@ -43,7 +43,9 @@ TransparentBalanceApp/
 
 **Option 1: Local Fake Data (No API calls)**
 ```bash
-# Edit .env.demo and set DEMO_MODE=true for local fake data
+# 1. Edit .env.demo file:
+#    DEMO_MODE=true
+# 2. Start demo container
 docker compose -f docker-compose.demo.yml up -d
 open http://localhost:5001
 ```
@@ -51,16 +53,20 @@ open http://localhost:5001
 **Option 2: Real Basiq Sandbox with Hooli Bank 🏦**
 ```bash
 # 1. Get free sandbox credentials from https://dashboard.basiq.io/
-# 2. Edit .env.demo with your sandbox credentials:
+# 2. Create demo user with Hooli bank connection (see guide below)
+# 3. Edit .env.demo with your actual sandbox credentials:
 #    DEMO_MODE=sandbox
-#    BASIQ_CLIENT_ID=your_sandbox_client_id
-#    BASIQ_CLIENT_SECRET=your_sandbox_client_secret
-# 3. Create demo user with Hooli bank connection (see guide below)
-# 4. Add BASIQ_USER_ID to .env.demo
-
+#    BASIQ_API_KEY=your_sandbox_api_key_name
+#    BASIQ_API_SECRET=your_sandbox_api_key_secret
+#    BASIQ_USER_ID=your_demo_user_id_with_hooli
+# 4. Start container (will now use real Basiq API)
 docker compose -f docker-compose.demo.yml up -d
 open http://localhost:5001
 ```
+
+**🔄 Switching Between Modes:**
+- Edit `.env.demo` and change `DEMO_MODE=true` (fake data) or `DEMO_MODE=sandbox` (real API)
+- Restart container: `docker compose -f docker-compose.demo.yml restart`
 
 #### 🏦 Production Setup (With Real Basiq Data)
 
@@ -69,7 +75,7 @@ For real bank data:
 ```bash
 # 1. Configure environment
 cp .env.example .env
-# Edit .env with your Basiq credentials
+# Edit .env with your Basiq API key credentials
 
 # 2. Start with Docker Compose
 docker compose up -d
@@ -88,7 +94,7 @@ pip install -r requirements.txt
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env with your Basiq credentials
+# Edit .env with your Basiq API key credentials
 
 # 3. Run the application
 python app.py
@@ -166,8 +172,8 @@ The app automatically handles:
 #### Step 3: Generate API Key
 1. Within your application, go to "API Keys" tab
 2. Click "Create Key"
-3. Name it: `balance-key`
-4. **Copy the key immediately** (cannot retrieve later)
+3. **API Key Name**: `balance-key` (this becomes your `BASIQ_API_KEY`)
+4. **Copy the API Key Secret immediately** (cannot retrieve later - this becomes your `BASIQ_API_SECRET`)
 
 #### Step 4: Set Minimal Permissions (Security Critical)
 
@@ -187,10 +193,10 @@ Under **Actions** (required for data sync):
 **❌ Disable Everything Else** for minimal attack surface.
 
 #### Step 5: Security Best Practices
-- Store API key in `.env` file (never commit to Git)
+- Store API key and secret in `.env` file (never commit to Git)
 - Use secrets manager in production (AWS Secrets Manager, etc.)
 - Set strict read-only file permissions on config files
-- Regularly rotate API credentials
+- Regularly rotate API key credentials
 
 ### 🏦 Connecting Bank Accounts
 
@@ -239,7 +245,9 @@ Under **Actions** (required for data sync):
 
 #### Step 3: Add User ID to Environment
 ```bash
-# Add this to your .env file
+# Add this to your .env file (along with your API key credentials)
+BASIQ_API_KEY=your_api_key_name
+BASIQ_API_SECRET=your_api_key_secret
 BASIQ_USER_ID=your_copied_user_id_here
 ```
 
@@ -289,8 +297,8 @@ setInterval(() => widget.fetchBalance(), 30 * 60 * 1000); // 30 minutes
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `BASIQ_CLIENT_ID` | Your Basiq application client ID | Yes |
-| `BASIQ_CLIENT_SECRET` | Your Basiq application client secret | Yes |
+| `BASIQ_API_KEY` | Your Basiq API key name | Yes |
+| `BASIQ_API_SECRET` | Your Basiq API key secret | Yes |
 | `BASIQ_USER_ID` | User ID from connecting your bank account | Yes |
 | `FLASK_ENV` | Flask environment (production/development) | No |
 | `FLASK_DEBUG` | Enable Flask debug mode | No |
