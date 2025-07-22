@@ -146,7 +146,12 @@ def fetch_balance_from_basiq():
             return {'error': 'No accounts found', 'status': 'error'}
         
         for account in accounts_data.get('data', []):
-            institution_id = account.get('institution', {}).get('id')
+            # Institution can be either a string ID or an object with 'id' field
+            institution = account.get('institution')
+            if isinstance(institution, dict):
+                institution_id = institution.get('id')
+            else:
+                institution_id = institution
             print(f"[DEBUG] Found account with institution: {institution_id}")
             
             if institution_id == target_institution or DEMO_MODE == 'sandbox':
