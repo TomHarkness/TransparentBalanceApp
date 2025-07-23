@@ -6,13 +6,9 @@ services:
     container_name: suncorp-balance-dashboard
     ports:
       - "5001:5000"
+    env_file:
+      - .env
     environment:
-      - BASIQ_API_KEY=${BASIQ_API_KEY}
-      - BASIQ_API_SECRET=${BASIQ_API_SECRET}
-      - BASIQ_USER_ID=${BASIQ_USER_ID}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - CONSENT_CALLBACK_URL=${CONSENT_CALLBACK_URL}
-      - DISPLAY_TRANSACTIONS=${DISPLAY_TRANSACTIONS}
       - FLASK_ENV=production
     volumes:
       # Persistent storage for cache files
