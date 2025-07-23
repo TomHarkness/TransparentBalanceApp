@@ -289,8 +289,8 @@ def cache_transactions(transactions_data):
     with open(TRANSACTIONS_CACHE_FILE, 'w') as f:
         json.dump(transactions_data, f)
 
-def create_basiq_user():
-    """Create a new user in Basiq for consent flow"""
+def create_basiq_user(form_data):
+    """Create a new user in Basiq for consent flow with comprehensive business data"""
     try:
         access_token = get_access_token()
         
@@ -301,11 +301,27 @@ def create_basiq_user():
             'basiq-version': '3.0'
         }
         
-        # Create user with minimal data
+        # Create user with comprehensive business data from form
         user_data = {
-            'email': f'user_{int(time.time())}@example.com',  # Unique email
-            'mobile': '+61400000000'  # Placeholder mobile
+            'email': form_data.get('email'),
+            'mobile': form_data.get('mobile'),
+            'firstName': form_data.get('firstName'),
+            'lastName': form_data.get('lastName'),
+            'businessName': form_data.get('businessName'),
+            'businessIdNo': form_data.get('businessIdNo'),
+            'businessIdNoType': form_data.get('businessIdNoType'),
+            'businessAddress': {
+                'addressLine1': form_data.get('addressLine1'),
+                'addressLine2': form_data.get('addressLine2') if form_data.get('addressLine2') else None,
+                'suburb': form_data.get('suburb'),
+                'state': form_data.get('state'),
+                'postcode': form_data.get('postcode'),
+                'countryCode': 'AUS'
+            }
         }
+        
+        # Remove None values from businessAddress
+        user_data['businessAddress'] = {k: v for k, v in user_data['businessAddress'].items() if v is not None}
         
         create_user_url = f"{BASIQ_API_URL}/users"
         print(f"[DEBUG] Creating Basiq user: {create_user_url}")
@@ -479,8 +495,29 @@ def admin_setup():
             return render_template_string(ADMIN_SETUP_TEMPLATE, error='Invalid password')
         
         if action == 'create_user':
+            # Validate required fields
+            required_fields = ['firstName', 'lastName', 'email', 'mobile', 'businessName', 
+                             'businessIdNo', 'businessIdNoType', 'addressLine1', 'suburb', 
+                             'state', 'postcode']
+            
+            missing_fields = [field for field in required_fields if not request.form.get(field)]
+            if missing_fields:
+                return render_template_string(ADMIN_SETUP_TEMPLATE, 
+                                            error=f'Missing required fields: {", ".join(missing_fields)}')
+            
+            # Validate business ID format
+            business_id = request.form.get('businessIdNo').replace(' ', '')
+            business_type = request.form.get('businessIdNoType')
+            
+            if business_type == 'ABN' and len(business_id) != 11:
+                return render_template_string(ADMIN_SETUP_TEMPLATE, 
+                                            error='ABN must be 11 digits')
+            elif business_type == 'ACN' and len(business_id) != 9:
+                return render_template_string(ADMIN_SETUP_TEMPLATE, 
+                                            error='ACN must be 9 digits')
+            
             # Step 1: Create user and generate consent URL
-            user_id = create_basiq_user()
+            user_id = create_basiq_user(request.form)
             if not user_id:
                 return render_template_string(ADMIN_SETUP_TEMPLATE, error='Failed to create user')
             
@@ -529,57 +566,229 @@ ADMIN_SETUP_TEMPLATE = """
 <head>
     <title>Admin Setup - Basiq Consent Flow</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
-        .error { color: red; margin: 10px 0; }
-        .success { color: green; margin: 10px 0; }
-        input, button { margin: 5px 0; padding: 10px; }
-        button { background: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .consent-url { background: #f0f0f0; padding: 15px; margin: 15px 0; word-break: break-all; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            max-width: 700px; margin: 30px auto; padding: 20px; 
+            background: #f7f7f8; color: #1d1d22;
+        }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .error { color: #ef4444; margin: 15px 0; padding: 10px; background: #fef2f2; border-radius: 6px; }
+        .success { color: #10b981; margin: 15px 0; padding: 10px; background: #f0fdf4; border-radius: 6px; }
+        
+        .form-section { margin: 25px 0; padding: 20px; background: #f9fafb; border-radius: 8px; }
+        .form-section h3 { margin: 0 0 15px 0; color: #374151; font-size: 16px; }
+        
+        .form-row { display: flex; gap: 15px; margin-bottom: 15px; }
+        .form-group { flex: 1; }
+        .form-group.full-width { flex: 100%; }
+        
+        label { display: block; margin-bottom: 5px; font-weight: 500; color: #374151; font-size: 14px; }
+        input, select { 
+            width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; 
+            font-size: 14px; box-sizing: border-box;
+        }
+        input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        
+        .required { color: #ef4444; }
+        
+        button { 
+            background: #1d1d22; color: white; border: none; padding: 12px 24px; 
+            border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;
+            margin-top: 20px;
+        }
+        button:hover { background: #374151; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .consent-url { 
+            background: #f0f0f0; padding: 20px; margin: 20px 0; 
+            border-radius: 8px; word-break: break-all; 
+        }
+        
+        .security-notes { 
+            margin-top: 30px; padding: 20px; background: #f9fafb; 
+            border-radius: 8px; font-size: 13px; color: #6b7280;
+        }
     </style>
+    <script>
+        function validateForm() {
+            // Basic client-side validation
+            const requiredFields = ['firstName', 'lastName', 'email', 'mobile', 'businessName', 
+                                   'businessIdNo', 'addressLine1', 'suburb', 'state', 'postcode'];
+            
+            for (let field of requiredFields) {
+                const element = document.querySelector(`[name="${field}"]`);
+                if (!element || !element.value.trim()) {
+                    alert(`Please fill in ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+                    element.focus();
+                    return false;
+                }
+            }
+            
+            // Validate ABN/ACN
+            const businessId = document.querySelector('[name="businessIdNo"]').value.replace(/\s/g, '');
+            const businessType = document.querySelector('[name="businessIdNoType"]').value;
+            
+            if (businessType === 'ABN' && businessId.length !== 11) {
+                alert('ABN must be exactly 11 digits');
+                return false;
+            }
+            if (businessType === 'ACN' && businessId.length !== 9) {
+                alert('ACN must be exactly 9 digits');
+                return false;
+            }
+            
+            return true;
+        }
+        
+        function formatMobile(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.startsWith('61')) {
+                value = '+' + value;
+            } else if (value.startsWith('0')) {
+                value = '+61' + value.substring(1);
+            } else if (!value.startsWith('+61')) {
+                value = '+61' + value;
+            }
+            input.value = value;
+        }
+    </script>
 </head>
 <body>
-    <h1>🔐 Basiq Consent Flow Setup</h1>
-    <p><strong>⚠️ WARNING:</strong> This is a one-time setup process for production deployment.</p>
-    
-    {% if error %}
-        <div class="error">❌ {{ error }}</div>
-    {% endif %}
-    
-    {% if success %}
-        <div class="success">✅ User created successfully!</div>
-        <p><strong>User ID:</strong> {{ user_id }}</p>
-        <p><strong>Next Steps:</strong></p>
-        <ol>
-            <li>Click the consent URL below to complete account connection</li>
-            <li>Login with your Suncorp banking credentials</li>
-            <li>Grant consent for balance access</li>
-            <li>You'll be redirected back to confirm success</li>
-        </ol>
+    <div class="container">
+        <h1>🔐 Basiq Production Setup</h1>
+        <p><strong>⚠️ WARNING:</strong> One-time setup for production deployment with comprehensive business information.</p>
         
-        <div class="consent-url">
-            <strong>Consent URL:</strong><br>
-            <a href="{{ consent_url }}" target="_blank">{{ consent_url }}</a>
-        </div>
+        {% if error %}
+            <div class="error">❌ {{ error }}</div>
+        {% endif %}
         
-        <p><em>⚠️ After completing consent, remove this admin route for security!</em></p>
-    {% else %}
-        <form method="post">
-            <h3>Step 1: Authenticate</h3>
-            <input type="password" name="password" placeholder="Admin Password" required>
-            <br>
-            <button type="submit" name="action" value="create_user">🚀 Start Consent Flow</button>
-        </form>
-        
-        <div style="margin-top: 30px; padding: 15px; background: #f9f9f9;">
-            <h4>🔐 Security Notes:</h4>
-            <ul>
-                <li>This creates a new user in Basiq for your production app</li>
-                <li>You'll be redirected to Basiq's secure consent UI</li>
-                <li>Your banking credentials never touch this server</li>
-                <li>This route should be disabled after setup</li>
-            </ul>
-        </div>
-    {% endif %}
+        {% if success %}
+            <div class="success">✅ User created successfully with complete business information!</div>
+            <p><strong>User ID:</strong> {{ user_id }}</p>
+            <p><strong>Next Steps:</strong></p>
+            <ol>
+                <li>Click the consent URL below to complete account connection</li>
+                <li>Login with your Suncorp banking credentials</li>
+                <li>Grant consent for balance access</li>
+                <li>You'll be redirected back to confirm success</li>
+            </ol>
+            
+            <div class="consent-url">
+                <strong>Consent URL:</strong><br>
+                <a href="{{ consent_url }}" target="_blank">{{ consent_url }}</a>
+            </div>
+            
+            <p><em>⚠️ After completing consent, remove this admin route for security!</em></p>
+        {% else %}
+            <form method="post" onsubmit="return validateForm()">
+                <div class="form-section">
+                    <h3>🔑 Admin Authentication</h3>
+                    <div class="form-group">
+                        <label for="password">Admin Password <span class="required">*</span></label>
+                        <input type="password" name="password" id="password" required>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3>👤 Personal Information</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="firstName">First Name <span class="required">*</span></label>
+                            <input type="text" name="firstName" id="firstName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName">Last Name <span class="required">*</span></label>
+                            <input type="text" name="lastName" id="lastName" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="email">Email Address <span class="required">*</span></label>
+                            <input type="email" name="email" id="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="mobile">Mobile Number <span class="required">*</span></label>
+                            <input type="tel" name="mobile" id="mobile" placeholder="+61400000000" 
+                                   onblur="formatMobile(this)" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3>🏢 Business Information</h3>
+                    <div class="form-group full-width">
+                        <label for="businessName">Business Name <span class="required">*</span></label>
+                        <input type="text" name="businessName" id="businessName" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="businessIdNoType">Business ID Type <span class="required">*</span></label>
+                            <select name="businessIdNoType" id="businessIdNoType" required>
+                                <option value="">Select Type</option>
+                                <option value="ABN">ABN (Australian Business Number)</option>
+                                <option value="ACN">ACN (Australian Company Number)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="businessIdNo">Business ID Number <span class="required">*</span></label>
+                            <input type="text" name="businessIdNo" id="businessIdNo" 
+                                   placeholder="11 digits for ABN, 9 for ACN" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3>📍 Business Address</h3>
+                    <div class="form-group full-width">
+                        <label for="addressLine1">Address Line 1 <span class="required">*</span></label>
+                        <input type="text" name="addressLine1" id="addressLine1" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="addressLine2">Address Line 2 (Optional)</label>
+                        <input type="text" name="addressLine2" id="addressLine2">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="suburb">Suburb <span class="required">*</span></label>
+                            <input type="text" name="suburb" id="suburb" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="state">State <span class="required">*</span></label>
+                            <select name="state" id="state" required>
+                                <option value="">Select State</option>
+                                <option value="NSW">NSW</option>
+                                <option value="VIC">VIC</option>
+                                <option value="QLD">QLD</option>
+                                <option value="SA">SA</option>
+                                <option value="WA">WA</option>
+                                <option value="TAS">TAS</option>
+                                <option value="NT">NT</option>
+                                <option value="ACT">ACT</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="postcode">Postcode <span class="required">*</span></label>
+                            <input type="text" name="postcode" id="postcode" pattern="[0-9]{4}" 
+                                   placeholder="4 digits" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" name="action" value="create_user">🚀 Create User & Start Consent Flow</button>
+            </form>
+            
+            <div class="security-notes">
+                <h4>🔐 Security & Compliance Notes:</h4>
+                <ul>
+                    <li>All business information is stored securely with Basiq (CDR compliant)</li>
+                    <li>You'll be redirected to Basiq's official consent UI</li>
+                    <li>Banking credentials never touch this server</li>
+                    <li>This route should be disabled after successful setup</li>
+                    <li>ABN/ACN validation ensures proper business registration</li>
+                </ul>
+            </div>
+        {% endif %}
+    </div>
 </body>
 </html>
 """
