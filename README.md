@@ -198,7 +198,7 @@ The app automatically handles:
 
 #### Step 4: Set Permissions (Security Critical)
 
-**✅ Required Permissions for Balance-Only Access:**
+**✅ Core Balance & Account Access:**
 
 Under **Accounts**:
 - ✅ `GET /users/{userId}/accounts`
@@ -210,12 +210,55 @@ Under **Actions** (required for data sync):
 - ✅ `GET /users/{userId}/actions/{actionId}`
 - ✅ `GET /actions/{actionId}/results`
 - ✅ `GET /actions/{actionId}/results/{resultId}`
+- ✅ `GET /actionTypes` - **Required for action definitions**
 
-**✅ Additional Permissions for Transaction History (Optional):**
+**✅ Critical Permissions for Consent Flow (Production Required):**
+
+Under **Users** (user management):
+- ✅ `POST /users` - **Create users for consent flow**
+- ✅ `GET /users/{userId}` - **Read user information**
+
+Under **Institutions** (bank selection in consent UI):
+- ✅ `GET /institutions` - **List available banks**
+- ✅ `GET /institutions/{institutionId}` - **Bank details**
+
+Under **Connections** (bank account linking):
+- ✅ `GET /users/{userId}/connections`
+- ✅ `POST /users/{userId}/connections`
+- ✅ `GET /users/{userId}/connections/{connectionId}`
+- ✅ `POST /users/{userId}/connections/{connectionId}`
+- ✅ `DELETE /users/{userId}/connections/{connectionId}`
+- ✅ `POST /users/{userId}/connections/{connectionId}/refresh`
+- ✅ `POST /users/{userId}/connections/refresh`
+
+Under **Consents** (CDR compliance):
+- ✅ `GET /users/{userId}/consents`
+- ✅ `POST /users/{userId}/consents`
+- ✅ `GET /users/{userId}/consents/{consentId}`
+- ✅ `POST /users/{userId}/consents/{consentId}`
+- ✅ `DELETE /users/{userId}/consents/{consentId}`
+
+Under **AuthLink** (authentication flow):
+- ✅ `GET /users/{userId}/auth_link`
+- ✅ `POST /users/{userId}/auth_link`
+- ✅ `DELETE /users/{userId}/auth_link`
+
+Under **Config**:
+- ✅ `GET /config/{userId}` - **User configuration**
+
+Under **Token Management**:
+- ✅ `POST /token` - **Generate CLIENT tokens for consent UI**
+
+**✅ Optional Permissions for Transaction History:**
 
 Under **Transactions** (only if you set `DISPLAY_TRANSACTIONS=true`):
 - ✅ `GET /users/{userId}/transactions` - **Required for transaction display**
 - ✅ `GET /users/{userId}/transactions/{transactionId}` - **Optional for detailed transaction data**
+
+**⚠️ IMPORTANT:** 
+- User creation and consent flow permissions require a **paid Basiq subscription** (~AUD $0.39/month/user)
+- Free/developer accounts cannot create users or use consent flow in production
+- Missing consent flow permissions will cause "permission denied" errors when clicking consent URLs
 
 **❌ Disable Everything Else** for minimal attack surface.
 
@@ -252,18 +295,19 @@ Under **Transactions** (only if you set `DISPLAY_TRANSACTIONS=true`):
 **⚠️ CRITICAL:** Dashboard connections are **NOT valid for production!**  
 Production apps **MUST** use the Basiq Consent UI for CDR compliance.
 
-> **📋 Implementation Note:** Admin consent flow interface is being added in the next update.  
-> Current version supports sandbox/demo modes only. Production consent flow coming soon!
+**💳 SUBSCRIPTION REQUIRED:** Production user creation requires a paid Basiq subscription (~AUD $0.39/month/user). Free accounts will receive 403 "Access denied" errors when attempting to create users.
 
-### **Production Consent Flow Implementation Required**
+### **Production Consent Flow (Ready to Use)**
 
-**You need to implement a secure admin interface for account connection:**
+**The application includes a secure admin interface for account connection:**
 
-1. **Create Admin Setup Route** (One-time use):
-   ```python
-   @app.route('/admin/setup', methods=['GET', 'POST'])
-   # Password-protected admin interface
+1. **Access Admin Setup Route** (One-time use):
    ```
+   https://yourdomain.com/admin/setup
+   ```
+   - Password-protected two-step authentication
+   - Comprehensive business registration form
+   - CDR-compliant user creation
 
 2. **Consent Flow Process**:
    - **Create User** via Basiq API
@@ -435,6 +479,26 @@ docker compose up --build -d
 # Execute commands in container
 docker exec -it suncorp-balance-dashboard /bin/bash
 ```
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+#### "Permission denied" when clicking consent URL
+**Problem:** Basiq Consent UI requires additional permissions beyond basic balance access.
+**Solution:** Enable all consent flow permissions listed in Step 4 above, especially:
+- Institutions (bank selection)
+- Connections (bank linking) 
+- Consents (CDR compliance)
+- AuthLink (authentication)
+
+#### 403 "Access denied" during user creation
+**Problem:** User creation requires a paid Basiq subscription.
+**Solution:** Upgrade from free/developer account to production subscription (~AUD $0.39/month/user).
+
+#### 400 "Parameter not valid" - User ID errors  
+**Problem:** Using placeholder `your_user_id_here` instead of real user ID.
+**Solution:** Complete admin setup flow first to create real user, then update `.env` file.
 
 ## 📞 Support
 
